@@ -27,6 +27,8 @@ app.use(morgan("dev"));
 
 // Health check
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+app.get("/", (_req, res) => res.send("API RESTAURANT en ligne"));
+
 
 // Routes
 app.use("/api/auth", authRoutes);
