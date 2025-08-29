@@ -6,15 +6,15 @@ import QRCode from "qrcode";
  * @returns URL complète pour passer commande
  */
 export function buildTableUrl(tableNumber: number): string {
-  let frontend = process.env.FRONTEND_URL || "http://localhost:5173";
-  
+  let frontend = process.env.FRONTEND_URL ?? "http://localhost:5173";
+
   // Si FRONTEND_URL contient plusieurs URLs séparées par des virgules, prendre la première
-  if (frontend.includes(',')) {
-    frontend = frontend.split(',')[0].trim();
+  if (frontend.includes(",")) {
+    frontend = frontend.split(",")[0]?.trim() ?? frontend;
   }
-  
-  // Vérifier que l'URL est valide
+
   try {
+    // Vérifier que l'URL est valide
     const url = new URL(frontend);
     url.pathname = "/order";
     url.searchParams.set("table", String(tableNumber));
@@ -33,5 +33,10 @@ export function buildTableUrl(tableNumber: number): string {
  * @returns Data URL du QR code (base64)
  */
 export async function generateQrDataUrl(text: string): Promise<string> {
-  return QRCode.toDataURL(text, { margin: 1, scale: 6 });
+  try {
+    return await QRCode.toDataURL(text, { margin: 1, scale: 6 });
+  } catch (error) {
+    console.error("Erreur lors de la génération du QR Code:", error);
+    throw new Error("Impossible de générer le QR Code");
+  }
 }

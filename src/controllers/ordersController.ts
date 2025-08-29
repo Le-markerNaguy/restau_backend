@@ -2,20 +2,15 @@ import type { Request, Response } from "express";
 import { prisma } from "../prisma";
 import { getIo } from "../websocket.js";
 import type { OrderDTO } from "../types/order";
-import { OrderStatus } from "../../generated/prisma";
+import { OrderStatus, Prisma } from "../../generated/prisma";
 
 // ⚡ Type Prisma complet avec relations
-type OrderWithRelations = Awaited<ReturnType<typeof getOrderWithRelations>>;
-
-// Utilitaire pour inclure les relations
-function getOrderWithRelations() {
-  return prisma.order.findFirst({
-    include: { table: true, items: { include: { dish: true } } },
-  });
-}
+type OrderWithRelations = Prisma.OrderGetPayload<{
+  include: { table: true; items: { include: { dish: true } } };
+}>;
 
 // ✅ Mapper Prisma → DTO (frontend friendly)
-function formatOrder(order: any): OrderDTO {
+function formatOrder(order: OrderWithRelations): OrderDTO {
   return {
     id: order.id,
     tableNumber: order.table.number,
@@ -24,7 +19,7 @@ function formatOrder(order: any): OrderDTO {
     createdAt: order.createdAt,
     totalAmount: order.total,
     dailyNumber: order.dailyNumber,
-    items: order.items.map((it: any) => ({
+    items: order.items.map((it) => ({
       dishName: it.dish.name,
       price: it.dish.price,
       quantity: it.quantity,
@@ -72,7 +67,7 @@ export async function createOrder(req: Request, res: Response) {
       data: {
         tableId,
         nom: nom ?? "",
-        status: OrderStatus.PENDING, // 👈 par défaut en attente
+        status: OrderStatus.PENDING,
         total,
         date: new Date(),
         dailyNumber,
@@ -86,11 +81,10 @@ export async function createOrder(req: Request, res: Response) {
       include: { table: true, items: { include: { dish: true } } },
     });
 
-    // ⚡ Transformation → DTO
-    const orderDTO: OrderDTO = formatOrder(prismaOrder);
+    const orderDTO = formatOrder(prismaOrder);
 
     // Envoi socket aux admins
-    getIo().to("admins").emit("order:new", orderDTO);
+    getIo().to("admins").emit("order:new", prismaOrder);
 
     return res
       .status(201)
@@ -117,8 +111,8 @@ export async function updateOrderStatus(req: Request, res: Response) {
       include: { table: true, items: { include: { dish: true } } },
     });
 
-    const orderDTO: OrderDTO = formatOrder(prismaOrder);
-    getIo().to("admins").emit("order:status", orderDTO);
+    const orderDTO = formatOrder(prismaOrder);
+    getIo().to("admins").emit("order:status", prismaOrder);
 
     return res.json({ message: `Statut mis à jour en ${status}`, order: orderDTO });
   } catch (err) {
@@ -138,8 +132,8 @@ export async function cancelOrder(req: Request, res: Response) {
       include: { table: true, items: { include: { dish: true } } },
     });
 
-    const orderDTO: OrderDTO = formatOrder(prismaOrder);
-    getIo().to("admins").emit("order:status", orderDTO);
+    const  orderDTO  = formatOrder(prismaOrder);
+    getIo().to("admins").emit("order:status", prismaOrder);
 
     return res.json({ message: "Commande annulée ❌", order: orderDTO });
   } catch (err) {
@@ -160,7 +154,7 @@ export async function getAllOrders(req: Request, res: Response) {
       include: { table: true, items: { include: { dish: true } } },
     });
 
-    const ordersDTO: OrderDTO[] = prismaOrders.map(formatOrder);
+    const ordersDTO = prismaOrders.map(formatOrder);
     return res.json(ordersDTO);
   } catch (err) {
     console.error(err);
