@@ -1,15 +1,24 @@
-import { PrismaClient } from "../generated/prisma"
+import { PrismaClient } from "../generated/prisma";
 
-// PrismaClient est attaché au global object en développement pour éviter
-// d'épuiser la limite de connexions à la base de données pendant le hot-reloading
-const globalForPrisma = global as unknown as { prisma: PrismaClient }
+declare global {
+  // On ajoute une propriété sur le global pour TypeScript
+  // afin qu'il ne se plaigne pas quand on l'utilise
+  var prisma: PrismaClient | undefined;
+}
 
+// On utilise l’instance existante si elle existe (dev), sinon on crée un nouveau client
 export const prisma =
-  globalForPrisma.prisma ||
+  globalThis.prisma ||
   new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-  })
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"],
+  });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
+// En développement, on attache l’instance au global pour la réutiliser
+if (process.env.NODE_ENV === "development") {
+  globalThis.prisma = prisma;
+}
 
-export default prisma
+export default prisma;
