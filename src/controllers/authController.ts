@@ -44,10 +44,12 @@ export async function login(req: Request, res: Response) {
 
   res.cookie("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 24 * 60 * 60 * 1000, // 1 jour
+    secure: process.env.NODE_ENV === "production", // obligatoire en prod (Render utilise HTTPS)
+    sameSite: "none", // ⚠️ nécessaire pour cross-domain
+    maxAge: 24 * 60 * 60 * 1000,
+    path: "/", // optionnel mais plus propre
   });
+
 
   return res.json({ message: "Connexion réussie" });
 }
