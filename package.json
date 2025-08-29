@@ -5,9 +5,10 @@
   "main": "src/app.ts",
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx watch src/server.ts",
-    "start": "node dist/app.js",
+    "build": "prisma generate && tsc",
+    "postinstall": "prisma generate",
+    "dev": "ts-node src/app.ts --exec tsx watch",
+    "start": "ts-node src/server.ts --exec ts-node-dev --respawn --transpile-only",
     "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
