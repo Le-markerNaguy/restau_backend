@@ -1,0 +1,83 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+}
+
+model Dish {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String?
+  price       Int
+  imageUrl    String?
+  category    Category
+  available   Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Table {
+  id        Int      @id @default(autoincrement())
+  number    Int      @unique
+  qrData    String
+  createdAt DateTime @default(now())
+  orders    Order[]
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  tableId     Int
+  dailyNumber Int?
+  date        DateTime    @default(now())
+  table       Table       @relation(fields: [tableId], references: [id])
+  total       Int
+  nom         String?
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id       Int @id @default(autoincrement())
+  orderId  Int
+  dishId   Int
+  quantity Int
+  order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  dish     Dish @relation(fields: [dishId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  SUPERADMIN
+}
+
+enum Category {
+  ENTREE
+  PLAT
+  DESSERT
+  BOISSON
+}
+
+enum OrderStatus {
+  PENDING
+  PREPARING
+  READY
+  DELIVERED
+  CANCELED
+}
