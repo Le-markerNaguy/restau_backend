@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { createDish, deleteDish, getAllDishes, updateDish , } from "../controllers/dishesController";
-import { upload } from "../middleware/upload";
+import { createDish, deleteDish, getAllDishes, updateDish , } from "../controllers/dishesController.js";
+import { upload } from "../middleware/upload.js";
 
 
 const router: Router = Router();

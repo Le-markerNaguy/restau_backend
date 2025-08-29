@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-import type { ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData } from "./types/socket";
+import type { ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData } from "./types/socket.js";
 
 
 let ioInstance: Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData> | null = null;
