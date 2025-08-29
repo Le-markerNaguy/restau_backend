@@ -55,9 +55,15 @@ export async function login(req: Request, res: Response) {
 }
 
 export async function logout(_req: Request, res: Response) {
-  res.clearCookie("token");
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
+    path: "/"   // ⚠️ surtout important !
+  });
   return res.json({ message: "Déconnecté" });
 }
+
 
 export async function me(req: Request, res: Response) {
   // req.user est défini par middleware/auth.ts
