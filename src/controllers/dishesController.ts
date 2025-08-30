@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma } from "../prisma";
+import { supabase } from "../supabaseClient"; // Assure-toi d'avoir configuré Supabase
 
 // Étendre Request pour inclure file de Multer
 type MulterRequest = Request & { file?: Express.Multer.File };
@@ -25,16 +26,28 @@ export async function getAllDishes(_req: Request, res: Response) {
 export async function createDish(req: Request, res: Response) {
   try {
     const mreq = req as MulterRequest;
-    const { name, description, price, category, available, imageUrl } = req.body;
+    const { name, description, price, category, available } = req.body;
 
     if (!name || !price || isNaN(Number(price))) {
       return res.status(400).json({ error: "Nom et prix sont requis" });
     }
 
-    // Gestion image
-    const finalImageUrl = mreq.file
-      ? `/uploads/${mreq.file.filename}`
-      : imageUrl || null;
+    let finalImageUrl = null;
+
+    // Upload image sur Supabase si présente
+    if (mreq.file) {
+      const fileName = `${Date.now()}-${mreq.file.originalname}`;
+      const { error: uploadError } = await supabase.storage
+        .from("uploads") // ton bucket Supabase
+        .upload(fileName, mreq.file.buffer, {
+          contentType: mreq.file.mimetype,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from("uploads").getPublicUrl(fileName);
+      finalImageUrl = data.publicUrl;
+    }
 
     const dish = await prisma.dish.create({
       data: {
@@ -64,14 +77,26 @@ export async function updateDish(req: Request, res: Response) {
   try {
     const mreq = req as MulterRequest;
     const { id } = req.params;
-    const { name, description, price, category, available, imageUrl } = req.body;
+    const { name, description, price, category, available } = req.body;
 
     const existing = await prisma.dish.findUnique({ where: { id: Number(id) } });
     if (!existing) return res.status(404).json({ error: "Plat non trouvé" });
 
-    const finalImageUrl = mreq.file
-      ? `/uploads/${mreq.file.filename}`
-      : imageUrl || existing.imageUrl;
+    let finalImageUrl = existing.imageUrl;
+
+    if (mreq.file) {
+      const fileName = `${Date.now()}-${mreq.file.originalname}`;
+      const { error: uploadError } = await supabase.storage
+        .from("uploads")
+        .upload(fileName, mreq.file.buffer, {
+          contentType: mreq.file.mimetype,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from("uploads").getPublicUrl(fileName);
+      finalImageUrl = data.publicUrl;
+    }
 
     const dish = await prisma.dish.update({
       where: { id: Number(id) },
