@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+
 import authRoutes from "./routes/auth.js";
 import dishesRoutes from "./routes/disheRoutes.js";
 import tablesRoutes from "./routes/tableRoutes.js";
@@ -12,23 +13,39 @@ import superAdminRoutes from "./routes/superAdminRoutes.js";
 
 const app: Express = express();
 
-// Sert le dossier public pour les images
-app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
+// Sert le dossier public pour les images avec CORS
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    res.setHeader(
+      "Access-Control-Allow-Origin",
+      "https://restau-frontend.vercel.app"
+    );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    next();
+  },
+  express.static(path.join(process.cwd(), "public/uploads"))
+);
 
 app.use(helmet());
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
-app.use(cors({
-  origin: (['http://localhost:3000', 'http://localhost:3001','https://restau-frontend.vercel.app']),
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "https://restau-frontend.vercel.app",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true,
+  })
+);
 app.use(morgan("dev"));
 
 // Health check
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.get("/", (_req, res) => res.send("API RESTAURANT en ligne"));
-
 
 // Routes
 app.use("/api/auth", authRoutes);
