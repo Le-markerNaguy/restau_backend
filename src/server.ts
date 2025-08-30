@@ -1,6 +1,6 @@
 import http from "http";
 import dotenv from "dotenv";
-import app from "./app.js"; // ⚡ Note le .js après compilation
+import app from "./app.js"; // ⚡ bien garder le .js après build
 import { initWebSocket } from "./websocket.js";
 
 dotenv.config();
@@ -18,7 +18,7 @@ server.listen(PORT, () => {
   console.log(`✅ API démarrée sur : http://localhost:${PORT}`);
 });
 
-// Gestion des erreurs
+// Gestion des erreurs (port déjà utilisé, etc.)
 server.on("error", (err: any) => {
   if (err.code === "EADDRINUSE") {
     const newPort = PORT + 1;

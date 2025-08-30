@@ -4,8 +4,8 @@ import {
   deleteDish,
   getAllDishes,
   updateDish,
-} from "../controllers/dishesController.js";
-import { upload } from "../middleware/upload.js";
+} from "../controllers/dishesController";
+import { upload } from "../middleware/upload";
 
 const router: Router = Router();
 
