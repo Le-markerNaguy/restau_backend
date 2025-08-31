@@ -9,7 +9,7 @@ export function initWebSocket(httpServer: any) {
       origin: (process.env.FRONTEND_URL?.split(",") as string[]) || ["*"],
       credentials: true
     },
-    transports: ["websocket", "polling"] // 🌟 WebSocket forcé mais fallback polling si nécessaire
+    transports: ["websocket"] // 🌟 WebSocket forcé
   });
 
   ioInstance.on("connection", (socket) => {
