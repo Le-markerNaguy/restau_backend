@@ -10,6 +10,7 @@ import dishesRoutes from "./routes/disheRoutes.js"; // ⚡ corrige le nom : pas 
 import tablesRoutes from "./routes/tableRoutes.js";
 import ordersRoutes from "./routes/orderRoutes.js";
 import superAdminRoutes from "./routes/superAdminRoutes.js";
+import dashboardRoutes from "./routes/dashboard.js";
 
 const app: Express = express();
 
@@ -40,5 +41,6 @@ app.use("/api/dishes", dishesRoutes);
 app.use("/api/tables", tablesRoutes);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/superadmin", superAdminRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 export default app;
