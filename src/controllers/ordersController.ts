@@ -4,22 +4,22 @@ import { getIo } from "../websocket.js";
 import type { OrderDTO } from "../types/order";
 import { OrderStatus, Prisma } from "../../generated/prisma";
 
-// ⚡ Type Prisma complet avec relations
+// Type Prisma complet avec relations
 type OrderWithRelations = Prisma.OrderGetPayload<{
   include: { table: true; items: { include: { dish: true } } };
 }>;
 
-// ✅ Mapper Prisma → DTO (frontend friendly)
+// Mapper Prisma → DTO (frontend friendly)
 function formatOrder(order: OrderWithRelations): OrderDTO {
   return {
     id: order.id,
     tableNumber: order.table.number,
-    customerName: order.nom,
+    customerName: order.nom ?? null,
     status: order.status,
     createdAt: order.createdAt,
     totalAmount: order.total,
     dailyNumber: order.dailyNumber,
-    items: order.items.map((it) => ({
+    items: order.items.map(it => ({
       dishName: it.dish.name,
       price: it.dish.price,
       quantity: it.quantity,
@@ -28,7 +28,7 @@ function formatOrder(order: OrderWithRelations): OrderDTO {
   };
 }
 
-// 📌 Création d’une commande (version sécurisée avec transaction)
+// 📌 Création d’une commande
 export async function createOrder(req: Request, res: Response) {
   try {
     const { tableId, plats, nom } = req.body as {
@@ -41,30 +41,22 @@ export async function createOrder(req: Request, res: Response) {
       return res.status(400).json({ error: "Paramètres manquants" });
     }
 
-    // Vérifier si la table existe
     const table = await prisma.table.findUnique({ where: { id: tableId } });
-    if (!table) {
-      return res.status(400).json({ error: "Table inexistante" });
-    }
+    if (!table) return res.status(400).json({ error: "Table inexistante" });
 
-    // Vérifier que les plats existent et sont dispos
-    const dishIds = plats.map((p) => p.platId);
+    const dishIds = plats.map(p => p.platId);
     const dishes = await prisma.dish.findMany({
       where: { id: { in: dishIds }, available: true },
     });
-    if (dishes.length !== dishIds.length) {
+    if (dishes.length !== dishIds.length)
       return res.status(400).json({ error: "Plats invalides ou indisponibles" });
-    }
 
-    // Calculer le total
     const total = plats.reduce((sum, p) => {
-      const dish = dishes.find((d) => d.id === p.platId);
+      const dish = dishes.find(d => d.id === p.platId);
       return sum + (dish ? dish.price * p.quantite : 0);
     }, 0);
 
-    // Début de transaction
-    const prismaOrder = await prisma.$transaction(async (tx) => {
-      // 📌 Calcul du numéro du jour
+    const prismaOrder = await prisma.$transaction(async tx => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -72,7 +64,6 @@ export async function createOrder(req: Request, res: Response) {
         where: { date: { gte: today } },
       });
 
-      // Création de la commande
       return tx.order.create({
         data: {
           tableId,
@@ -80,33 +71,26 @@ export async function createOrder(req: Request, res: Response) {
           status: OrderStatus.PENDING,
           total,
           date: new Date(),
-          dailyNumber: countToday + 1, // ⚡ sécurisé
+          dailyNumber: countToday + 1,
           items: {
-            create: plats.map((p) => ({
-              dishId: p.platId,
-              quantity: p.quantite,
-            })),
+            create: plats.map(p => ({ dishId: p.platId, quantity: p.quantite })),
           },
         },
         include: { table: true, items: { include: { dish: true } } },
       });
     });
 
-    // Mapper DTO
     const orderDTO = formatOrder(prismaOrder);
 
-    // 🚀 Notifier les admins en temps réel
-    getIo().to("admins").emit("order:new", prismaOrder);
+    // Émettre uniquement le DTO
+    getIo().to("admins").emit("order:new", orderDTO);
 
-    return res
-      .status(201)
-      .json({ message: "Commande créée avec succès 🎉", order: orderDTO });
+    return res.status(201).json({ message: "Commande créée", order: orderDTO });
   } catch (err) {
     console.error("❌ Erreur création commande :", err);
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
-
 
 // 📌 Mise à jour du statut
 export async function updateOrderStatus(req: Request, res: Response) {
@@ -114,9 +98,8 @@ export async function updateOrderStatus(req: Request, res: Response) {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!Object.values(OrderStatus).includes(status as OrderStatus)) {
+    if (!Object.values(OrderStatus).includes(status as OrderStatus))
       return res.status(400).json({ error: "Statut invalide" });
-    }
 
     const prismaOrder = await prisma.order.update({
       where: { id: Number(id) },
@@ -125,7 +108,8 @@ export async function updateOrderStatus(req: Request, res: Response) {
     });
 
     const orderDTO = formatOrder(prismaOrder);
-    getIo().to("admins").emit("order:status", prismaOrder);
+
+    getIo().to("admins").emit("order:status", orderDTO);
 
     return res.json({ message: `Statut mis à jour en ${status}`, order: orderDTO });
   } catch (err) {
@@ -146,11 +130,67 @@ export async function cancelOrder(req: Request, res: Response) {
     });
 
     const orderDTO = formatOrder(prismaOrder);
-    getIo().to("admins").emit("order:status", prismaOrder);
 
-    return res.json({ message: "Commande annulée ❌", order: orderDTO });
+    getIo().to("admins").emit("order:status", orderDTO);
+
+    return res.json({ message: "Commande annulée", order: orderDTO });
   } catch (err) {
     console.error(err);
+    return res.status(500).json({ error: "Erreur serveur" });
+  }
+}
+
+// 📌 Mise à jour complète d’une commande
+export async function updateOrder(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { nom, plats, notes } = req.body as {
+      nom?: string;
+      plats?: { platId: number; quantite: number }[];
+      notes?: string;
+    };
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: Number(id) },
+      include: { items: true },
+    });
+    if (!existingOrder) return res.status(404).json({ error: "Commande introuvable" });
+
+    let total = existingOrder.total;
+    let itemsUpdate: any = undefined;
+
+    if (plats?.length) {
+      const dishIds = plats.map(p => p.platId);
+      const dishes = await prisma.dish.findMany({
+        where: { id: { in: dishIds }, available: true },
+      });
+      if (dishes.length !== dishIds.length)
+        return res.status(400).json({ error: "Plats invalides ou indisponibles" });
+
+      total = plats.reduce((sum, p) => {
+        const dish = dishes.find(d => d.id === p.platId);
+        return sum + (dish ? dish.price * p.quantite : 0);
+      }, 0);
+
+      itemsUpdate = {
+        deleteMany: {},
+        create: plats.map(p => ({ dishId: p.platId, quantity: p.quantite })),
+      };
+    }
+
+    const prismaOrder = await prisma.order.update({
+      where: { id: Number(id) },
+      data: { nom, total, ...(itemsUpdate ? { items: itemsUpdate } : {}) },
+      include: { table: true, items: { include: { dish: true } } },
+    });
+
+    const orderDTO = formatOrder(prismaOrder);
+
+    getIo().to("admins").emit("order:update", orderDTO);
+
+    return res.json({ message: "Commande mise à jour", order: orderDTO });
+  } catch (err) {
+    console.error("❌ Erreur update commande :", err);
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
@@ -159,11 +199,7 @@ export async function cancelOrder(req: Request, res: Response) {
 export async function getAllOrders(req: Request, res: Response) {
   try {
     const prismaOrders = await prisma.order.findMany({
-      where: {
-        status: {
-          in: [OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY],
-        },
-      },
+      where: { status: { in: [OrderStatus.PENDING, OrderStatus.PREPARING, OrderStatus.READY] } },
       include: { table: true, items: { include: { dish: true } } },
     });
 
@@ -172,75 +208,5 @@ export async function getAllOrders(req: Request, res: Response) {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Erreur serveur" });
-  }
-}
-// 📌 Mise à jour complète d’une commande
-export async function updateOrder(req: Request, res: Response) {
-  try {
-    const { id } = req.params
-    const { nom, plats, notes } = req.body as {
-      nom?: string
-      plats?: { platId: number; quantite: number }[]
-      notes?: string
-    }
-
-    // Vérifier si la commande existe
-    const existingOrder = await prisma.order.findUnique({
-      where: { id: Number(id) },
-      include: { items: true },
-    })
-    if (!existingOrder) {
-      return res.status(404).json({ error: "Commande introuvable" })
-    }
-
-    // ⚡ Si plats envoyés → recalcul du total
-    let total = existingOrder.total
-    let itemsUpdate: any = undefined
-
-    if (plats && plats.length > 0) {
-      const dishIds = plats.map((p) => p.platId)
-      const dishes = await prisma.dish.findMany({
-        where: { id: { in: dishIds }, available: true },
-      })
-
-      if (dishes.length !== dishIds.length) {
-        return res.status(400).json({ error: "Plats invalides ou indisponibles" })
-      }
-
-      total = plats.reduce((sum, p) => {
-        const dish = dishes.find((d) => d.id === p.platId)
-        return sum + (dish ? dish.price * p.quantite : 0)
-      }, 0)
-
-      // ⚡ On supprime les anciens items et on recrée
-      itemsUpdate = {
-        deleteMany: {},
-        create: plats.map((p) => ({
-          dishId: p.platId,
-          quantity: p.quantite,
-        })),
-      }
-    }
-
-    const prismaOrder = await prisma.order.update({
-      where: { id: Number(id) },
-      data: {
-        nom,
-        dailyNumber: existingOrder.dailyNumber,
-        total,
-        ...(itemsUpdate ? { items: itemsUpdate } : {}),
-      },
-      include: { table: true, items: { include: { dish: true } } },
-    })
-
-    const orderDTO = formatOrder(prismaOrder)
-
-    // 🚀 Émettre un event temps réel
-    getIo().to("admins").emit("order:update", prismaOrder)
-
-    return res.json({ message: "Commande mise à jour ✅", order: orderDTO })
-  } catch (err) {
-    console.error("❌ Erreur update commande :", err)
-    return res.status(500).json({ error: "Erreur serveur" })
   }
 }
