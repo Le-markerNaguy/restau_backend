@@ -36,7 +36,7 @@ model Dish {
 model Table {
   id        Int      @id @default(autoincrement())
   number    Int      @unique
-  qrData    String
+  qrData    String   @unique
   createdAt DateTime @default(now())
   orders    Order[]
 }

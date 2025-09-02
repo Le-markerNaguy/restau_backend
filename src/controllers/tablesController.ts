@@ -2,8 +2,9 @@ import type { Request, Response } from "express";
 import { prisma } from "../prisma";
 import { buildTableUrl, generateQrDataUrl } from "../services/qr";
 import { OrderStatus } from "../../generated/prisma"; // ✅ Import de l'enum Prisma
+import QRCode from "qrcode";
 
-// 📌 Créer une table
+//Créer une table
 export async function createTable(req: Request, res: Response) {
   try {
     const { number } = req.body;
@@ -12,28 +13,36 @@ export async function createTable(req: Request, res: Response) {
       return res.status(400).json({ error: "Le numéro de table est requis" });
     }
 
+    // Vérifie si la table existe déjà
     const existingTable = await prisma.table.findUnique({
       where: { number: Number(number) },
     });
-
     if (existingTable) {
       return res.status(400).json({ error: "Une table avec ce numéro existe déjà" });
     }
 
+    // 🔑 Crée la table sans QR pour l’instant
     let table = await prisma.table.create({
       data: { number: Number(number), qrData: "" },
     });
 
-    // Génération du QR code
-    const url = buildTableUrl(table.number);
-    const qrCodeDataUrl = await generateQrDataUrl(url);
+    // 🔗 Construit l’URL que contiendra le QR code
+    const url = `${process.env.NEXT_PUBLIC_FRONTEND_URL}/order?table=${table.number}`;
 
+    // 🖼️ Génère le QR code (image base64)
+    const qrCodeDataUrl = await QRCode.toDataURL(url);
+
+    // 💾 Mets à jour la table avec l’URL encodée dans qrData
     table = await prisma.table.update({
       where: { id: table.id },
-      data: { qrData: qrCodeDataUrl },
+      data: { qrData: url },
     });
 
-    return res.status(201).json({ table, qrCode: qrCodeDataUrl });
+    return res.status(201).json({
+      table,
+      qrCodeImage: qrCodeDataUrl, // image à afficher/imprimer
+      qrCodeUrl: url,             // lien contenu dans le QR
+    });
   } catch (error) {
     console.error("Erreur création table:", error);
     return res.status(500).json({ error: "Erreur lors de la création de la table" });
@@ -189,28 +198,33 @@ export async function deleteTable(req: Request, res: Response) {
   }
 }
 
-// 📌 Régénérer QR Code
+//
 export async function regenerateQRCode(req: Request, res: Response) {
   try {
     const { id } = req.params;
 
+    // Vérifier si la table existe
     const table = await prisma.table.findUnique({ where: { id: Number(id) } });
-
     if (!table) {
       return res.status(404).json({ error: "Table non trouvée" });
     }
 
-    const url = buildTableUrl(table.number);
-    const qrCodeDataUrl = await generateQrDataUrl(url);
+    // 🔗 Construit l’URL du QR code
+    const url = `${process.env.NEXT_PUBLIC_FRONTEND_URL}/order?table=${table.number}`;
 
+    // 🖼️ Génère un nouveau QR code en base64
+    const qrCodeDataUrl = await QRCode.toDataURL(url);
+
+    // 💾 Mets à jour la table (enregistre l’URL dans qrData)
     const updatedTable = await prisma.table.update({
-      where: { id: Number(id) },
-      data: { qrData: qrCodeDataUrl },
+      where: { id: table.id },
+      data: { qrData: url },
     });
 
     return res.json({
       table: updatedTable,
-      qrCode: qrCodeDataUrl,
+      qrCodeImage: qrCodeDataUrl, // image à afficher ou imprimer
+      qrCodeUrl: url,             // URL encodée dans le QR
       message: "QR code régénéré avec succès",
     });
   } catch (error) {

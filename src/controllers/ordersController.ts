@@ -27,35 +27,48 @@ function formatOrder(order: OrderWithRelations): OrderDTO {
     })),
   };
 }
-
-// 📌 Création d’une commande
+// 📌 Création d’une commande (support tableId OU numéro de table depuis QR code)
 export async function createOrder(req: Request, res: Response) {
   try {
-    const { tableId, plats, nom } = req.body as {
-      tableId: number;
+    const { tableId, tableNumber, plats, nom } = req.body as {
+      tableId?: number; // cas admin / API
+      tableNumber?: number; // cas QR code
       plats: { platId: number; quantite: number }[];
       nom?: string;
     };
 
-    if (!tableId || !plats?.length) {
-      return res.status(400).json({ error: "Paramètres manquants" });
+    if ((!tableId && !tableNumber) || !plats?.length) {
+      return res.status(400).json({ error: "Paramètres manquants (tableId ou tableNumber requis)" });
     }
 
-    const table = await prisma.table.findUnique({ where: { id: tableId } });
-    if (!table) return res.status(400).json({ error: "Table inexistante" });
+    // ✅ Récupération de la table
+    let table = null;
+    if (tableId) {
+      table = await prisma.table.findUnique({ where: { id: Number(tableId) } });
+    } else if (tableNumber) {
+      table = await prisma.table.findUnique({ where: { number: Number(tableNumber) } });
+    }
 
+    if (!table) {
+      return res.status(400).json({ error: "Table inexistante" });
+    }
+
+    // ✅ Vérifier que les plats sont valides et disponibles
     const dishIds = plats.map(p => p.platId);
     const dishes = await prisma.dish.findMany({
       where: { id: { in: dishIds }, available: true },
     });
-    if (dishes.length !== dishIds.length)
+    if (dishes.length !== dishIds.length) {
       return res.status(400).json({ error: "Plats invalides ou indisponibles" });
+    }
 
+    // ✅ Calcul du total
     const total = plats.reduce((sum, p) => {
       const dish = dishes.find(d => d.id === p.platId);
       return sum + (dish ? dish.price * p.quantite : 0);
     }, 0);
 
+    // ✅ Création transactionnelle de la commande
     const prismaOrder = await prisma.$transaction(async tx => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -66,7 +79,7 @@ export async function createOrder(req: Request, res: Response) {
 
       return tx.order.create({
         data: {
-          tableId,
+          tableId: table.id,
           nom: nom ?? "",
           status: OrderStatus.PENDING,
           total,
@@ -82,7 +95,7 @@ export async function createOrder(req: Request, res: Response) {
 
     const orderDTO = formatOrder(prismaOrder);
 
-    // Émettre uniquement le DTO
+    // 📡 Notification aux admins
     getIo().to("admins").emit("order:new", orderDTO);
 
     return res.status(201).json({ message: "Commande créée", order: orderDTO });
@@ -91,6 +104,7 @@ export async function createOrder(req: Request, res: Response) {
     return res.status(500).json({ error: "Erreur serveur" });
   }
 }
+
 
 // 📌 Mise à jour du statut
 export async function updateOrderStatus(req: Request, res: Response) {
