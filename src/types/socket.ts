@@ -8,15 +8,16 @@ export type OrderWithRelations = Order & { table: Table; items: OrderItemWithDis
 
 
 export interface ServerToClientEvents {
-"order:new": (order: OrderWithRelations) => void;
-"order:status": (order: Order) => void;
+    "order:new": (order: OrderWithRelations) => void;
+    "order:status": (order: Order) => void;
+    "order:update": (order: Order) => void
 }
 
 
 export interface ClientToServerEvents {
-"admin:join": () => void;
+    "admin:join": () => void;
 }
 
 
-export interface InterServerEvents {}
+export interface InterServerEvents { }
 export interface SocketData { email?: string; adminId?: number }
