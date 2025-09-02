@@ -6,24 +6,26 @@ import QRCode from "qrcode";
  * @returns URL complète pour passer commande
  */
 export function buildTableUrl(tableNumber: number): string {
-  let frontend = process.env.FRONTEND_URL ?? "http://localhost:5173";
+  const frontend = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
-  // Si FRONTEND_URL contient plusieurs URLs séparées par des virgules, prendre la première
-  if (frontend.includes(",")) {
-    frontend = frontend.split(",")[0]?.trim() ?? frontend;
+  if (!frontend) {
+    throw new Error(
+      "⚠️ La variable d'environnement FRONTEND_URL n'est pas définie"
+    );
   }
 
   try {
-    // Vérifier que l'URL est valide
-    const url = new URL(frontend);
+    // Si FRONTEND_URL contient plusieurs URLs séparées par des virgules, prendre la première
+    const firstUrl = frontend.split(",")[0].trim();
+
+    const url = new URL(firstUrl);
     url.pathname = "/order";
     url.searchParams.set("table", String(tableNumber));
     return url.toString();
   } catch (error) {
     console.error("Erreur lors de la construction de l'URL:", error);
     console.error("FRONTEND_URL invalide:", frontend);
-    // Fallback vers une URL par défaut
-    return `http://localhost:5173/order?table=${tableNumber}`;
+    throw new Error("Impossible de construire l'URL de commande");
   }
 }
 

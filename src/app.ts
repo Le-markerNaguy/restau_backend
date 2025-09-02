@@ -20,7 +20,7 @@ app.use(express.json({ limit: "10mb" })) // 🚀 monte un peu la limite si tu en
 app.use(cookieParser())
 
 // ✅ CORS dynamique basé sur l’ENV
-const allowedOrigins = (process.env.FRONTEND_URL?.split(",") as string[]) || [
+const allowedOrigins = (process.env.NEXT_PUBLIC_FRONTEND_URL?.split(",") as string[]) || [
   "http://localhost:3000",
   "http://localhost:3001",
   "https://restau-frontend.vercel.app",
