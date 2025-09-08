@@ -14,6 +14,6 @@ router.get("/", getAllOrders);
 router.patch("/:id/status", updateOrderStatus);
 router.patch("/:id", updateOrder); // 👈 nouvelle route pour modifier une commande
 router.delete("/:id", cancelOrder);
-router.post("/table/:id", createOrder);
+router.post("/table/:tableNumber", createOrder);
 
 export default router;

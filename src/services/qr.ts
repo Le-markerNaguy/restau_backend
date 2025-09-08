@@ -19,7 +19,7 @@ export function buildTableUrl(tableNumber: number): string {
     const firstUrl = frontend.split(",")[0].trim();
 
     const url = new URL(firstUrl);
-    url.pathname = "/order";
+    url.pathname = "/";
     url.searchParams.set("table", String(tableNumber));
     return url.toString();
   } catch (error) {
