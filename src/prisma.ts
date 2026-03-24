@@ -17,7 +17,7 @@ export const prisma =
   });
 
 // En développement, on attache l’instance au global pour la réutiliser
-if (process.env.NODE_ENV === "development") {
+if (process.env.NODE_ENV === "production") {
   globalThis.prisma = prisma;
 }
 
