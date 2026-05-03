@@ -13,7 +13,18 @@ export function normalizeDatabaseUrl(raw: string | undefined): string {
   ) {
     s = s.slice(1, -1).trim();
   }
-  return s.replace(/\r?\n/g, "").trim();
+  s = s.replace(/\r?\n/g, "").trim();
+
+  // Erreur fréquente sur Render : coller la ligne entière du .env ("DATABASE_URL=postgresql://...")
+  // au lieu de la seule valeur après le "=".
+  let prev = "";
+  while (prev !== s) {
+    prev = s;
+    s = s.replace(/^\s*export\s+DATABASE_URL\s*=\s*/i, "").trim();
+    s = s.replace(/^\s*DATABASE_URL\s*=\s*/i, "").trim();
+  }
+
+  return s;
 }
 
 /**
