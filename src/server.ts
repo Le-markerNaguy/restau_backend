@@ -2,15 +2,21 @@ import http from "http";
 import dotenv from "dotenv";
 import app from "./app";
 import { initWebSocket } from "./websocket";
-import { extractPostgresHostPort, normalizeDatabaseUrl } from "./dbConnectionString";
+import {
+  databaseUrlDiagnostics,
+  extractPostgresHostPort,
+  getDatabaseUrlForRuntime,
+  normalizeDatabaseUrl,
+} from "./dbConnectionString";
 
 dotenv.config();
 
-const databaseUrl = normalizeDatabaseUrl(process.env.DATABASE_URL);
-if (!databaseUrl) {
+const rawDatabaseUrl = normalizeDatabaseUrl(process.env.DATABASE_URL);
+if (!rawDatabaseUrl) {
   console.error("❌ DATABASE_URL manquant : définis-le dans les variables d’environnement (Render, .env, etc.).");
   process.exit(1);
 }
+const databaseUrl = getDatabaseUrlForRuntime(process.env.DATABASE_URL);
 process.env.DATABASE_URL = databaseUrl;
 
 if (!process.env.JWT_SECRET) {
@@ -20,11 +26,12 @@ if (!process.env.JWT_SECRET) {
 
 /** Log hôte/port détectés dans DATABASE_URL (sans afficher le mot de passe). Utile pour déboguer P1001 sur Render. */
 function logDatabaseUrlTarget() {
-  const parsed = extractPostgresHostPort(databaseUrl);
+  const parsed = extractPostgresHostPort(rawDatabaseUrl);
   if (!parsed || !parsed.host) {
     console.warn(
       "⚠️ DATABASE_URL : impossible de lire hôte/port (format invalide, ou mot de passe avec @ non encodé en %40)."
     );
+    console.warn(`   ${databaseUrlDiagnostics(rawDatabaseUrl)}`);
     return;
   }
   const portPart = parsed.port ? `:${parsed.port}` : "";
