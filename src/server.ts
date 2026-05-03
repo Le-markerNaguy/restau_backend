@@ -5,6 +5,15 @@ import { initWebSocket } from "./websocket";
 
 dotenv.config();
 
+if (!process.env.DATABASE_URL) {
+  console.error("❌ DATABASE_URL manquant : définis-le dans les variables d’environnement (Render, .env, etc.).");
+  process.exit(1);
+}
+if (!process.env.JWT_SECRET) {
+  console.error("❌ JWT_SECRET manquant : sans lui, la connexion (jwt.sign) échoue en 500.");
+  process.exit(1);
+}
+
 const PORT = parseInt(process.env.PORT || "8080", 10);
 
 // Crée le serveur HTTP

@@ -26,32 +26,47 @@ export async function register(req: Request, res: Response) {
 }
 
 export async function login(req: Request, res: Response) {
-  const { email, motDePasse } = req.body;
+  try {
+    const email = req.body?.email as string | undefined;
+    const motDePasse = (req.body?.motDePasse ?? req.body?.password) as string | undefined;
 
-  const user = await prisma.admin.findUnique({ where: { email } });
-  if (!user) return res.status(401).json({ error: "Identifiants invalides" });
+    if (!email?.trim() || !motDePasse) {
+      return res.status(400).json({ error: "Email et mot de passe requis" });
+    }
 
-  const valid = await verifyPassword(motDePasse, user.password);
-  if (!valid) return res.status(401).json({ error: "Identifiants invalides" });
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error("[LOGIN] JWT_SECRET non défini");
+      return res.status(500).json({ error: "Erreur de configuration serveur" });
+    }
 
-  console.log("[LOGIN] Utilisateur:", user.email, "Role:", user.role);
+    const user = await prisma.admin.findUnique({ where: { email: email.trim() } });
+    if (!user) return res.status(401).json({ error: "Identifiants invalides" });
 
-  const token = jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET as string,
-    { expiresIn: "1d" }
-  );
+    const valid = await verifyPassword(motDePasse, user.password);
+    if (!valid) return res.status(401).json({ error: "Identifiants invalides" });
 
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // obligatoire en prod (Render utilise HTTPS)
-    sameSite: "none", // ⚠️ nécessaire pour cross-domain
-    maxAge: 24 * 60 * 60 * 1000,
-    path: "/", // optionnel mais plus propre
-  });
+    console.log("[LOGIN] Utilisateur:", user.email, "Role:", user.role);
 
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      secret,
+      { expiresIn: "1d" }
+    );
 
-  return res.json({ message: "Connexion réussie" });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // obligatoire en prod (Render utilise HTTPS)
+      sameSite: "none", // ⚠️ nécessaire pour cross-domain
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/", // optionnel mais plus propre
+    });
+
+    return res.json({ message: "Connexion réussie" });
+  } catch (err) {
+    console.error("[LOGIN] Erreur:", err);
+    return res.status(500).json({ error: "Erreur serveur" });
+  }
 }
 
 export async function logout(_req: Request, res: Response) {
