@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "../generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { getDatabaseUrlForRuntime, normalizeDatabaseUrl } from "../src/dbConnectionString";
+import { prismaPgPoolFromDatabaseUrl } from "../src/pgPoolIpv4";
 
 const email = process.argv[2];
 const password = process.argv[3];
@@ -19,7 +20,7 @@ if (!normalizeDatabaseUrl(process.env.DATABASE_URL)) {
 const databaseUrl = getDatabaseUrlForRuntime(process.env.DATABASE_URL);
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: databaseUrl }),
+  adapter: new PrismaPg(prismaPgPoolFromDatabaseUrl(databaseUrl)),
 });
 
 async function main() {

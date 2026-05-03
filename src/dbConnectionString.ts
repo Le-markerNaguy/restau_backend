@@ -36,7 +36,7 @@ export function ensureSslModeForSupabase(url: string): string {
   if (/sslmode=/i.test(s)) return s;
   if (!/supabase\.co|pooler\.supabase\.com/i.test(s)) return s;
   const sep = s.includes("?") ? "&" : "?";
-  return `${s}${sep}sslmode=require`;
+  return `${s}${sep}sslmode=verify-full`;
 }
 
 /**

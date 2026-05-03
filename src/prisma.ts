@@ -1,6 +1,7 @@
 import { PrismaClient } from "../generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { getDatabaseUrlForRuntime } from "./dbConnectionString";
+import { prismaPgPoolFromDatabaseUrl } from "./pgPoolIpv4";
 
 declare global {
   // On ajoute une propriété sur le global pour TypeScript
@@ -14,7 +15,7 @@ const databaseUrl = getDatabaseUrlForRuntime(process.env.DATABASE_URL);
 export const prisma =
   globalThis.prisma ||
   new PrismaClient({
-    adapter: new PrismaPg({ connectionString: databaseUrl }),
+    adapter: new PrismaPg(prismaPgPoolFromDatabaseUrl(databaseUrl)),
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
