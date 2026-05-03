@@ -2,13 +2,17 @@ import http from "http";
 import dotenv from "dotenv";
 import app from "./app";
 import { initWebSocket } from "./websocket";
+import { extractPostgresHostPort, normalizeDatabaseUrl } from "./dbConnectionString";
 
 dotenv.config();
 
-if (!process.env.DATABASE_URL) {
+const databaseUrl = normalizeDatabaseUrl(process.env.DATABASE_URL);
+if (!databaseUrl) {
   console.error("❌ DATABASE_URL manquant : définis-le dans les variables d’environnement (Render, .env, etc.).");
   process.exit(1);
 }
+process.env.DATABASE_URL = databaseUrl;
+
 if (!process.env.JWT_SECRET) {
   console.error("❌ JWT_SECRET manquant : sans lui, la connexion (jwt.sign) échoue en 500.");
   process.exit(1);
@@ -16,17 +20,17 @@ if (!process.env.JWT_SECRET) {
 
 /** Log hôte/port détectés dans DATABASE_URL (sans afficher le mot de passe). Utile pour déboguer P1001 sur Render. */
 function logDatabaseUrlTarget() {
-  const raw = process.env.DATABASE_URL!.trim();
-  try {
-    const normalized = raw.replace(/^postgres:\/\//i, "postgresql://");
-    const u = new URL(normalized);
-    const port = u.port || (u.protocol === "postgresql:" ? "5432" : "");
-    console.log(`📦 DATABASE_URL → hôte: ${u.hostname}${port ? `:${port}` : ""}`);
-    if (!u.hostname || u.hostname.length < 3) {
-      console.warn("⚠️ Hôte DATABASE_URL suspect : vérifie la variable sur Render (copier-coller complet depuis Supabase).");
-    }
-  } catch {
-    console.warn("⚠️ DATABASE_URL illisible : format d’URL invalide (guillemets, retour ligne, caractères spéciaux du mot de passe non encodés ?).");
+  const parsed = extractPostgresHostPort(databaseUrl);
+  if (!parsed || !parsed.host) {
+    console.warn(
+      "⚠️ DATABASE_URL : impossible de lire hôte/port (format invalide, ou mot de passe avec @ non encodé en %40)."
+    );
+    return;
+  }
+  const portPart = parsed.port ? `:${parsed.port}` : "";
+  console.log(`📦 DATABASE_URL → hôte: ${parsed.host}${portPart}`);
+  if (parsed.host.length < 4 || parsed.host === "base") {
+    console.warn("⚠️ Hôte DATABASE_URL suspect : copie l’URI complet depuis Supabase (pooler + port 6543 pour l’app).");
   }
 }
 logDatabaseUrlTarget();

@@ -2,6 +2,7 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { normalizeDatabaseUrl } from "../src/dbConnectionString";
 
 const email = process.argv[2];
 const password = process.argv[3];
@@ -11,13 +12,14 @@ if (!email || !password) {
   process.exit(1);
 }
 
-if (!process.env.DATABASE_URL) {
+const databaseUrl = normalizeDatabaseUrl(process.env.DATABASE_URL);
+if (!databaseUrl) {
   console.error("DATABASE_URL manquant dans .env");
   process.exit(1);
 }
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  adapter: new PrismaPg({ connectionString: databaseUrl }),
 });
 
 async function main() {

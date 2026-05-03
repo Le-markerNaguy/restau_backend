@@ -1,5 +1,6 @@
 import { PrismaClient } from "../generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { normalizeDatabaseUrl } from "./dbConnectionString";
 
 declare global {
   // On ajoute une propriété sur le global pour TypeScript
@@ -7,11 +8,13 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
+const databaseUrl = normalizeDatabaseUrl(process.env.DATABASE_URL);
+
 // On utilise l’instance existante si elle existe (dev), sinon on crée un nouveau client
 export const prisma =
   globalThis.prisma ||
   new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+    adapter: new PrismaPg({ connectionString: databaseUrl || process.env.DATABASE_URL || "" }),
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
