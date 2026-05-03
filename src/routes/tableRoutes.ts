@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createTable ,deleteTable,getAllTables ,updateTable, regenerateQRCode } from "../controllers/tablesController.js";
+import { createTable ,deleteTable,getAllTables ,updateTable, regenerateQRCode } from "../controllers/tablesController";
 
 const router: Router = Router();
 router.post("/", createTable);

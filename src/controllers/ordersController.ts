@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma } from "../prisma";
-import { getIo } from "../websocket.js";
+import { getIo } from "../websocket";
 import type { OrderDTO } from "../types/order";
 import { OrderStatus, Prisma } from "../../generated/prisma";
 

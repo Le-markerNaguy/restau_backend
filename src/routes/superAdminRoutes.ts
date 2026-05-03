@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { createAdmin , createSuperAdmin, deleteUser, getAllUser, updateUser} from "../controllers/superAdminController.js";
-import {  authRequired, requireRole , } from "../middleware/auth.js";
+import { createAdmin , createSuperAdmin, deleteUser, getAllUser, updateUser} from "../controllers/superAdminController";
+import {  authRequired, requireRole , } from "../middleware/auth";
 
 const router: Router = Router();
 

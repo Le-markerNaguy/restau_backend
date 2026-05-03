@@ -1,7 +1,7 @@
 import http from "http";
 import dotenv from "dotenv";
-import app from "./app.js"; // ⚡ bien garder le .js après build
-import { initWebSocket } from "./websocket.js";
+import app from "./app";
+import { initWebSocket } from "./websocket";
 
 dotenv.config();
 

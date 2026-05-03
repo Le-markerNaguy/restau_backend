@@ -5,7 +5,7 @@ import {
   updateOrderStatus, 
   cancelOrder,
   updateOrder // 👈 importer la nouvelle fonction
-} from "../controllers/ordersController.js";
+} from "../controllers/ordersController";
 
 const router: Router = Router();
 

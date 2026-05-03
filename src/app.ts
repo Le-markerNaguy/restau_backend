@@ -5,12 +5,12 @@ import helmet from "helmet"
 import morgan from "morgan"
 
 // Routes
-import authRoutes from "./routes/auth.js"
-import dishesRoutes from "./routes/disheRoutes.js" // ✅ corrigé
-import tablesRoutes from "./routes/tableRoutes.js"
-import ordersRoutes from "./routes/orderRoutes.js"
-import superAdminRoutes from "./routes/superAdminRoutes.js"
-import dashboardRoutes from "./routes/dashboard.js"
+import authRoutes from "./routes/auth"
+import dishesRoutes from "./routes/disheRoutes" // ✅ corrigé
+import tablesRoutes from "./routes/tableRoutes"
+import ordersRoutes from "./routes/orderRoutes"
+import superAdminRoutes from "./routes/superAdminRoutes"
+import dashboardRoutes from "./routes/dashboard"
 
 const app: Express = express()
 
