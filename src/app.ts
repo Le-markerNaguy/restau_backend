@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser"
 import cors from "cors"
 import helmet from "helmet"
 import morgan from "morgan"
+import path from "path"
 
 // Routes
 import authRoutes from "./routes/auth"
@@ -18,7 +19,8 @@ const app: Express = express()
 app.use(helmet())
 app.use(express.json({ limit: "10mb" })) // 🚀 monte un peu la limite si tu envoies des images
 app.use(cookieParser())
-
+// ✅ Servir les fichiers statiques (images uploadées)
+app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")))
 // ✅ CORS dynamique basé sur l’ENV
 const allowedOrigins = (process.env.NEXT_PUBLIC_FRONTEND_URL?.split(",") as string[]) || [
   "http://localhost:3000",

@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma } from "../prisma";
+import { saveImage, deleteImage } from "../services/upload";
 
 // ========================
 // 📌 Récupérer tous les plats
@@ -27,7 +28,13 @@ export async function createDish(req: Request, res: Response) {
       return res.status(400).json({ error: "Nom et prix sont requis" });
     }
 
-    const finalImageUrl = typeof imageUrl === "string" && imageUrl.trim().length > 0 ? imageUrl.trim() : null;
+    // Priorité : fichier uploadé > URL fournie en body
+    let finalImageUrl: string | null = null;
+    if (req.file) {
+      finalImageUrl = await saveImage(req.file);
+    } else if (typeof imageUrl === "string" && imageUrl.trim().length > 0) {
+      finalImageUrl = imageUrl.trim();
+    }
 
     const dish = await prisma.dish.create({
       data: {
@@ -62,9 +69,25 @@ export async function updateDish(req: Request, res: Response) {
     if (!existing) return res.status(404).json({ error: "Plat non trouvé" });
 
     let finalImageUrl = existing.imageUrl;
-    if (imageUrl !== undefined) {
-      finalImageUrl =
+
+    // Si un nouveau fichier est uploadé
+    if (req.file) {
+      finalImageUrl = await saveImage(req.file);
+      // Supprimer l'ancienne image
+      if (existing.imageUrl) {
+        await deleteImage(existing.imageUrl);
+      }
+    } else if (imageUrl !== undefined) {
+      // Sinon, utiliser l'URL fournie en body si elle existe
+      const newImageUrl =
         typeof imageUrl === "string" && imageUrl.trim().length > 0 ? imageUrl.trim() : null;
+      
+      // Si l'URL change, supprimer l'ancienne
+      if (newImageUrl !== existing.imageUrl && existing.imageUrl) {
+        await deleteImage(existing.imageUrl);
+      }
+      
+      finalImageUrl = newImageUrl;
     }
 
     const dish = await prisma.dish.update({
@@ -98,6 +121,11 @@ export async function deleteDish(req: Request, res: Response) {
 
     const existing = await prisma.dish.findUnique({ where: { id: Number(id) } });
     if (!existing) return res.status(404).json({ error: "Plat non trouvé" });
+
+    // Supprimer l'image du stockage
+    if (existing.imageUrl) {
+      await deleteImage(existing.imageUrl);
+    }
 
     await prisma.dish.delete({ where: { id: Number(id) } });
     return res.json({ message: "Plat supprimé" });
