@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const tablesController_1 = require("../controllers/tablesController");
+const router = (0, express_1.Router)();
+router.post("/", tablesController_1.createTable);
+router.get("/", tablesController_1.getAllTables);
+router.patch("/:id", tablesController_1.updateTable);
+router.delete("/:id", tablesController_1.deleteTable);
+router.post("/:id/qr", tablesController_1.regenerateQRCode);
+exports.default = router;
