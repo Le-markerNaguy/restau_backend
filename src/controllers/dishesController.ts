@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma } from "../prisma";
-import { saveImage, deleteImage } from "../services/upload";
+import { uploadImageToSupabase, deleteImageFromSupabase } from "../services/supabaseStorage";
 
 // ========================
 // 📌 Récupérer tous les plats
@@ -31,7 +31,7 @@ export async function createDish(req: Request, res: Response) {
     // Priorité : fichier uploadé > URL fournie en body
     let finalImageUrl: string | null = null;
     if (req.file) {
-      finalImageUrl = await saveImage(req.file);
+      finalImageUrl = await uploadImageToSupabase(req.file);
     } else if (typeof imageUrl === "string" && imageUrl.trim().length > 0) {
       finalImageUrl = imageUrl.trim();
     }
@@ -72,10 +72,10 @@ export async function updateDish(req: Request, res: Response) {
 
     // Si un nouveau fichier est uploadé
     if (req.file) {
-      finalImageUrl = await saveImage(req.file);
+      finalImageUrl = await uploadImageToSupabase(req.file);
       // Supprimer l'ancienne image
       if (existing.imageUrl) {
-        await deleteImage(existing.imageUrl);
+        await deleteImageFromSupabase(existing.imageUrl);
       }
     } else if (imageUrl !== undefined) {
       // Sinon, utiliser l'URL fournie en body si elle existe
@@ -84,7 +84,7 @@ export async function updateDish(req: Request, res: Response) {
       
       // Si l'URL change, supprimer l'ancienne
       if (newImageUrl !== existing.imageUrl && existing.imageUrl) {
-        await deleteImage(existing.imageUrl);
+        await deleteImageFromSupabase(existing.imageUrl);
       }
       
       finalImageUrl = newImageUrl;
@@ -122,9 +122,9 @@ export async function deleteDish(req: Request, res: Response) {
     const existing = await prisma.dish.findUnique({ where: { id: Number(id) } });
     if (!existing) return res.status(404).json({ error: "Plat non trouvé" });
 
-    // Supprimer l'image du stockage
+    // Supprimer l'image de Supabase Storage
     if (existing.imageUrl) {
-      await deleteImage(existing.imageUrl);
+      await deleteImageFromSupabase(existing.imageUrl);
     }
 
     await prisma.dish.delete({ where: { id: Number(id) } });
